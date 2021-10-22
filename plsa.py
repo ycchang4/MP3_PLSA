@@ -69,7 +69,7 @@ class Corpus(object):
             res.update(doc)
         self.vocabulary = res
         self.vocabulary_size = len(res)
-        
+        self.vocabulary_d = {k: i for i, k in enumerate(self.vocabulary)}
 
     def build_term_doc_matrix(self):
         """
@@ -80,7 +80,7 @@ class Corpus(object):
         """
         self.term_doc_matrix = np.zeros(shape=(self.number_of_documents, self.vocabulary_size))
 
-        self.vocabulary_d = {k: i for i, k in enumerate(self.vocabulary)}
+        
 
         for i, doc in enumerate(self.documents):
             for term in doc:
@@ -103,7 +103,7 @@ class Corpus(object):
 
         self.document_topic_prob = normalize(np.random.random(size=(self.number_of_documents, number_of_topics)))
         self.topic_word_prob = normalize(np.random.random(size=(number_of_topics, len(self.vocabulary))))
-
+        print("doc topic prob")
         print(self.document_topic_prob)
         
 
@@ -141,7 +141,7 @@ class Corpus(object):
 
         self.topic_word_prob = np.nan_to_num(self.topic_word_prob)
         for doc in range(self.topic_prob.shape[0]):
-            for v in range(self.topic_prob.shape[2]):
+            for v in range(self.topic_prob.shape[1]):
                 self.topic_prob[doc, :, v] = self.document_topic_prob[doc, :] * self.topic_word_prob[:, v]
                 self.topic_prob[doc, :, v] /= self.topic_prob[doc, :, v].sum()
         self.topic_word_prob = np.nan_to_num(self.topic_word_prob)
@@ -157,16 +157,27 @@ class Corpus(object):
         # ############################
         # your code here
         # ############################
+        for topic in range(self.topic_prob.shape[1]):
+            for voc in range(self.topic_prob.shape[2]):
+                self.topic_word_prob[topic, voc] = self.term_doc_matrix[:, voc].dot(self.topic_prob[:, topic, voc])
+            self.topic_word_prob[topic, :] /= self.topic_word_prob[topic, :].sum()
+        self.topic_word_prob = np.nan_to_num(self.topic_word_prob)
 
-        
+        print("test p(w|z)")
+
         # update P(z | d)
 
         # ############################
         # your code here
         # ############################
         
-        pass    # REMOVE THIS
+        for doc in range(self.topic_prob.shape[0]):
+            for topic in range(self.topic_prob.shape[1]):
+                self.document_topic_prob[doc, topic] = self.term_doc_matrix[doc, :].dot(self.topic_prob[doc, topic, :])
+            self.document_topic_prob[doc, :] /= self.document_topic_prob[doc, :].sum()
+        self.document_topic_prob = np.nan_to_num(self.document_topic_prob)
 
+        print("test p(z|D)")
 
     def calculate_likelihood(self, number_of_topics):
         """ Calculate the current log-likelihood of the model using
@@ -179,7 +190,8 @@ class Corpus(object):
         # your code here
         # ############################
         
-        return
+        self.likelihoods.append(np.sum(np.log(self.document_topic_prob.dot(self.topic_word_prob))))
+        return self.likelihoods[-1]
 
     def plsa(self, number_of_topics, max_iter, epsilon):
 
@@ -202,6 +214,8 @@ class Corpus(object):
         # Run the EM algorithm
         current_likelihood = 0.0
 
+        last_topic_prob = self.topic_prob.copy()
+
         for iteration in range(max_iter):
             print("Iteration #" + str(iteration + 1) + "...")
 
@@ -209,7 +223,22 @@ class Corpus(object):
             # your code here
             # ############################
 
-            pass    # REMOVE THIS
+            self.expectation_step()
+            diff = abs(self.topic_prob - last_topic_prob)
+            L1 = diff.sum()
+            print ("L1: ", L1)
+            print (last_topic_prob)
+            # assert L1 > 0
+            last_topic_prob = self.topic_prob.copy()
+
+            self.maximization_step(number_of_topics)
+            self.calculate_likelihood(number_of_topics)
+            tmp_likelihood = self.calculate_likelihood(number_of_topics)
+            if iteration > 100 and abs(current_likelihood - tmp_likelihood) < epsilon/10:
+                print('Stopping', tmp_likelihood)
+                return tmp_likelihood
+            current_likelihood = tmp_likelihood
+            print(max(self.likelihoods))
 
 
 
