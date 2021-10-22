@@ -45,11 +45,17 @@ class Corpus(object):
         
         Update self.number_of_documents
         """
-        # #############################
-        # your code here
-        # #############################
         
-        pass    # REMOVE THIS
+
+        print(self.documents_path)
+        with open(self.documents_path, 'r') as file:
+            for line in file.readlines():
+                doc = list()
+                doc.extend(line.split())
+                self.documents.append(doc)
+                self.number_of_documents += 1
+
+    
 
     def build_vocabulary(self):
         """
@@ -58,11 +64,12 @@ class Corpus(object):
 
         Update self.vocabulary_size
         """
-        # #############################
-        # your code here
-        # #############################
+        res = set()
+        for doc in self.documents:
+            res.update(doc)
+        self.vocabulary = res
+        self.vocabulary_size = len(res)
         
-        pass    # REMOVE THIS
 
     def build_term_doc_matrix(self):
         """
@@ -71,11 +78,15 @@ class Corpus(object):
 
         self.term_doc_matrix[i][j] is the count of term j in document i
         """
-        # ############################
-        # your code here
-        # ############################
-        
-        pass    # REMOVE THIS
+        self.term_doc_matrix = np.zeros(shape=(self.number_of_documents, self.vocabulary_size))
+
+        self.vocabulary_d = {k: i for i, k in enumerate(self.vocabulary)}
+
+        for i, doc in enumerate(self.documents):
+            for term in doc:
+                self.term_doc_matrix[i][self.vocabulary_d[term]] +=1
+
+        # print(self.term_doc_matrix)
 
 
     def initialize_randomly(self, number_of_topics):
@@ -90,7 +101,10 @@ class Corpus(object):
         # your code here
         # ############################
 
-        pass    # REMOVE THIS
+        self.document_topic_prob = normalize(np.random.random(size=(self.number_of_documents, number_of_topics)))
+        self.topic_word_prob = normalize(np.random.random(size=(number_of_topics, len(self.vocabulary))))
+
+        print(self.document_topic_prob)
         
 
     def initialize_uniformly(self, number_of_topics):
@@ -125,7 +139,12 @@ class Corpus(object):
         # your code here
         # ############################
 
-        pass    # REMOVE THIS
+        self.topic_word_prob = np.nan_to_num(self.topic_word_prob)
+        for doc in range(self.topic_prob.shape[0]):
+            for v in range(self.topic_prob.shape[2]):
+                self.topic_prob[doc, :, v] = self.document_topic_prob[doc, :] * self.topic_word_prob[:, v]
+                self.topic_prob[doc, :, v] /= self.topic_prob[doc, :, v].sum()
+        self.topic_word_prob = np.nan_to_num(self.topic_word_prob)
             
 
     def maximization_step(self, number_of_topics):
